@@ -1,0 +1,15 @@
+[project]
+name = "rPPGAnalysis"
+version = "0.1.0"
+description = "Default template for PDM package"
+authors = [
+    {name = "stijn", email = "s.van.lierop@nfi.nl"},
+]
+dependencies = ["streamlit>=1.54.0"]
+requires-python = "==3.10.*"
+readme = "README.md"
+license = {text = "MIT"}
+
+
+[tool.pdm]
+distribution = false
