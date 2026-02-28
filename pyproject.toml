@@ -4,9 +4,18 @@ version = "0.1.0"
 description = "Default template for PDM package"
 authors = [
     {name = "stijn", email = "s.van.lierop@nfi.nl"},
+    {name = "Stijn van Lierop", email = "150940112+StijnvLierop@users.noreply.github.com"},
 ]
-dependencies = ["streamlit>=1.54.0"]
-requires-python = "==3.10.*"
+dependencies = [
+    "streamlit>=1.54.0",
+    "opencv-python>=4.13.0.92",
+    "tqdm>=4.67.3",
+    "mediapipe>=0.10.32",
+    "scipy>=1.17.1",
+    "scikit-image>=0.26.0",
+    "scikit-learn>=1.8.0",
+]
+requires-python = "==3.11.*"
 readme = "README.md"
 license = {text = "MIT"}
 
