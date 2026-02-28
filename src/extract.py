@@ -137,8 +137,6 @@ def extract_signal_from_video(video_path: str,
         bvp_signal = green(rgb_signal)
     elif analysis_method == 'POS':
         bvp_signal = pos(rgb_signal, fps)
-    elif analysis_method == 'RhythmMamba':
-        bvp_signal = rhythmmamba(rgb_signal)
     else:
         raise ValueError(f"Unknown analysis method: {analysis_method}")
 
