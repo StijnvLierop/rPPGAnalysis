@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 from scipy.signal import butter, filtfilt, welch, medfilt
 
-from src.landmarks import draw_landmark_video, extract_landmarks
+from src.landmarks import draw_landmark_video, extract_landmarks, extract_face_crops
 from src.methods.green import green
 from src.methods.pos import pos
 from src.methods.rythmmamba import rhythmmamba
@@ -121,12 +121,16 @@ def extract_signal_from_video(video_path: str,
     frames_rgb, fps = read_video_rgb(video_path)
 
     # Extract roi landmarks
-    rgb_signal, predicted_landmarks = extract_landmarks(frames_rgb, fps, selected_landmark_regions)
+    if analysis_method != 'RhythmMamba':
+        rgb_signal, predicted_landmarks = extract_landmarks(frames_rgb, fps, selected_landmark_regions)
 
-    # If the length of landmarks is 0, return
-    if len(rgb_signal) == 0:
-        print("No landmarks found in video. Returning empty result.")
-        return None, None
+        # If the length of landmarks is 0, return
+        if len(rgb_signal) == 0:
+            print("No landmarks found in video. Returning empty result.")
+            return None, None
+    else:
+        rgb_signal = extract_face_crops(frames_rgb)
+        predicted_landmarks = None
 
     # Select method
     if analysis_method == 'GREEN':
@@ -138,8 +142,11 @@ def extract_signal_from_video(video_path: str,
     else:
         raise ValueError(f"Unknown analysis method: {analysis_method}")
 
-    # Generate landmark vide
-    landmarks_video = draw_landmark_video(frames_rgb, predicted_landmarks, selected_landmark_regions)
+    # Generate landmark video
+    if analysis_method != 'RhythmMamba':
+        landmarks_video = draw_landmark_video(frames_rgb, predicted_landmarks, selected_landmark_regions)
+    else:
+        landmarks_video = None
 
     # Define window size and stepsize for calculating BPM
     winsize = 6 # Length of the sliding window to calculate BPM from in seconds

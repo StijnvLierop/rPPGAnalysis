@@ -7,10 +7,10 @@ from src.extract import extract_signal_from_video
 from src.landmarks import LANDMARK_REGIONS
 
 # Page title
-st.title("Extract rPPG Signal")
 st.set_page_config(
-    page_title="Extract",
+    page_title="rPPG Analysis",
 )
+st.title("Extract rPPG Signal")
 
 results, landmarks_video, smooth_signal = None, None, None
 

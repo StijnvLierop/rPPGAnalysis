@@ -19,6 +19,7 @@ dependencies = [
     "mamba-ssm>=2.3.0",
     "torch>=2.10.0",
     "packaging>=26.0",
+    "ninja>=1.13.0",
 ]
 requires-python = "==3.11.*"
 readme = "README.md"

@@ -230,3 +230,65 @@ def draw_landmark_video(frames: List[np.ndarray],
     out.release()
 
     return temp_path
+
+
+def extract_face_crops(frames: List, target_size=(128, 128)) -> np.ndarray:
+    """
+        Detects faces using MediaPipe GPU and returns a stacked array of crops.
+        """
+    # Initialize MediaPipe Task
+    base_options = mp.tasks.BaseOptions(
+        model_asset_path='src/face_landmarker.task'
+    )
+    options = mp.tasks.vision.FaceLandmarkerOptions(
+        base_options=base_options,
+        running_mode=mp.tasks.vision.RunningMode.VIDEO
+    )
+
+    face_crops = []
+
+    with mp.tasks.vision.FaceLandmarker.create_from_options(options) as landmarker:
+        for i, frame in enumerate(frames):
+            h, w, _ = frame.shape
+            # Convert to MediaPipe Image format
+            mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
+
+            # Detect landmarks (using frame index as timestamp in ms)
+            result = landmarker.detect_for_video(mp_image, i * 33)  # 33ms ~ 30fps
+
+            if result.face_landmarks:
+                # Get landmarks for the first face detected
+                landmarks = result.face_landmarks[0]
+
+                # Calculate Bounding Box based on all landmarks
+                x_coords = [lm.x * w for lm in landmarks]
+                y_coords = [lm.y * h for lm in landmarks]
+
+                x_min, x_max = int(min(x_coords)), int(max(x_coords))
+                y_min, y_max = int(min(y_coords)), int(max(y_coords))
+
+                # Add a 20% margin to include the forehead and cheeks better
+                margin_w = (x_max - x_min) * 0.2
+                margin_h = (y_max - y_min) * 0.2
+
+                x1 = max(0, int(x_min - margin_w))
+                y1 = max(0, int(y_min - margin_h))
+                x2 = min(w, int(x_max + margin_w))
+                y2 = min(h, int(y_max + margin_h))
+
+                # Crop and Resize
+                crop = frame[y1:y2, x1:x2]
+                if crop.size > 0:
+                    resized_crop = cv2.resize(crop, target_size, interpolation=cv2.INTER_AREA)
+                    face_crops.append(resized_crop)
+            else:
+                # If a face is missing in one frame, duplicate the last successful crop
+                # to keep the temporal sequence consistent for Mamba
+                if face_crops:
+                    face_crops.append(face_crops[-1])
+                else:
+                    # If the very first frame fails, use a black placeholder (or skip)
+                    face_crops.append(np.zeros((target_size[0], target_size[1], 3), dtype=np.uint8))
+
+    # Return as [T, H, W, C] array
+    return np.array(face_crops)

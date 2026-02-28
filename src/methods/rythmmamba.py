@@ -342,15 +342,40 @@ def rhythmmamba(frames: np.ndarray) -> np.ndarray:
     :param frames:
     :return:
     """
+    # Transform frames to PyTorch tensor
+    input_tensor = torch.from_numpy(frames).float()
 
-    # Preprocess input
-    input_tensor = torch.from_numpy(frames)
+    # Normalize frames to [-1, 1]
+    input_tensor = (input_tensor / 127.5) - 1.0
+
+    # Permute to [Batch, Frames, Channels, Height, Width]
+    x = input_tensor.permute(0, 3, 1, 2).unsqueeze(0)
+
+    # Resize each frame to 128x128
+    # (B*T, C, H, W) for interpolation
+    B, T, C, H, W = x.shape
+    x = x.view(B * T, C, H, W)
+    x = F.interpolate(x, size=(128, 128), mode='bilinear')
+    x = x.view(B, T, C, 128, 128)[:, :, :, :, :]
 
     # Initialize model
-    model = RhythmMamba('MMPD_intra_RhythmMamba.pth')
+    model = RhythmMamba()
+
+    # Load model weights
+    state_dict = torch.load('src/methods/MMPD_intra_RhythmMamba.pth', map_location='cpu')
+    new_state_dict = {}
+    for k, v in state_dict.items():
+        if k.startswith("module"):
+            new_key = k.replace("module.", "")
+        else:
+            new_key = k
+        new_state_dict[new_key] = v
+    model.load_state_dict(new_state_dict)
+    model.eval()
+    model.to("cuda")
 
     # Run inference
     with torch.no_grad():
-        out = model.predict(input_tensor)
+        out = model.forward(x.to("cuda")).squeeze().detach().cpu().numpy()
 
-    return out.squeeze().detach().cpu().numpy()
+    return out
