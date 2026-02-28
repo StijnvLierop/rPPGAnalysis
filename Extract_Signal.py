@@ -23,7 +23,7 @@ with st.sidebar:
 
         # Pick analysis algorithm
         analysis_algorithm = st.selectbox('Select rPPG Extraction Method',
-                                          options=['green', 'pos'])
+                                          options=['GREEN', 'POS', 'RhythmMamba'])
 
         with st.expander("Advanced Options"):
             # Whether to smooth the signal

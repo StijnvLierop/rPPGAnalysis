@@ -7,6 +7,7 @@ from scipy.signal import butter, filtfilt, welch, medfilt
 from src.landmarks import draw_landmark_video, extract_landmarks
 from src.methods.green import green
 from src.methods.pos import pos
+from src.methods.rythmmamba import rhythmmamba
 
 
 def read_video_rgb(video_path: str):
@@ -128,10 +129,12 @@ def extract_signal_from_video(video_path: str,
         return None, None
 
     # Select method
-    if analysis_method == 'green':
+    if analysis_method == 'GREEN':
         bvp_signal = green(rgb_signal)
-    elif analysis_method == 'pos':
+    elif analysis_method == 'POS':
         bvp_signal = pos(rgb_signal, fps)
+    elif analysis_method == 'RhythmMamba':
+        bvp_signal = rhythmmamba(rgb_signal)
     else:
         raise ValueError(f"Unknown analysis method: {analysis_method}")
 
