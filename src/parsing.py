@@ -1,5 +1,11 @@
 import pandas as pd
 
+def merge_reference_data(df_movesense: pd.DataFrame, df_garmin: pd.DataFrame):
+    df = df.merge(reference_data, on='Timestamp', how='left')
+    return df
+
+def merge_predicted_data(df_reference: pd.DataFrame, df_predicted: pd.DataFrame):
+    df = df_reference.merge(df_predicted, on='Timestamp', how='left')
 
 def df_from_movesense_json(df: pd.DataFrame):
     heart_rate_data = df['data']
