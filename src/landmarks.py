@@ -4,8 +4,7 @@ from typing import Tuple, List, Optional
 
 import cv2
 import numpy as np
-import mediapipe as mp
-from mediapipe.tasks.python.vision import drawing_utils
+from functools import lru_cache
 
 
 # SELECTED_LANDMARKS = [10, 34, 35, 36, 47, 50, 53, 67, 69, 70, 100, 101, 104, 108, 109, 111, 116,
@@ -13,6 +12,24 @@ from mediapipe.tasks.python.vision import drawing_utils
 #                       205, 206, 207, 216, 222, 228, 230, 234, 244, 264, 266, 276, 280, 282, 283,
 #                       299, 300, 329, 330, 337, 338, 340, 346, 347, 348, 353, 355, 368, 371, 372,
 #                       411, 417, 423, 425, 426, 427, 436, 441, 444, 446, 448, 450, 452, 454, 464]
+
+@lru_cache(maxsize=1)
+def _get_mp():
+    import mediapipe as mp
+    return mp
+
+@lru_cache(maxsize=1)
+def _get_landmarker():
+    mp = _get_mp()
+    base_options = mp.tasks.BaseOptions(model_asset_path='src/face_landmarker.task')
+    options = mp.tasks.vision.FaceLandmarkerOptions(
+        base_options=base_options,
+        output_face_blendshapes=False,
+        output_facial_transformation_matrixes=False,
+        num_faces=1,
+        running_mode=mp.tasks.vision.RunningMode.VIDEO
+    )
+    return mp.tasks.vision.FaceLandmarker.create_from_options(options)
 
 # MediaPipe Face Mesh Landmark Regions
 # These indices are based on the standard 468-point face mesh.
@@ -84,16 +101,9 @@ def extract_landmarks(frames: List[np.ndarray],
                of the selected landmarks with shape (num_frames, 3).
              - A list of FaceLandmarker detection results with length num_frames.
     """
-    # Initialize MediaPipe Face Landmarker
-    base_options = mp.tasks.BaseOptions(model_asset_path='src/face_landmarker.task')
-    options = mp.tasks.vision.FaceLandmarkerOptions(
-        base_options=base_options,
-        output_face_blendshapes=False,
-        output_facial_transformation_matrixes=False,
-        num_faces=1,
-        running_mode=mp.tasks.vision.RunningMode.VIDEO
-    )
-    landmark_detector = mp.tasks.vision.FaceLandmarker.create_from_options(options)
+    # Lazy-load MediaPipe and reuse a cached landmarker
+    mp = _get_mp()
+    landmark_detector = _get_landmarker()
 
     # Get selected landmarks
     selected_landmarks = [v for l, v in LANDMARK_REGIONS.items() if l in selected_landmark_regions]
@@ -151,9 +161,7 @@ def extract_landmarks(frames: List[np.ndarray],
         # Add predicted landmark locations result
         landmark_detector_results.append(landmark_detector_result)
 
-    # Close landmark detector
-    landmark_detector.close()
-
+    # Do not close cached landmark detector to allow reuse
     return np.array(landmarks_list), landmark_detector_results
 
 
@@ -170,6 +178,8 @@ def draw_landmark_video(frames: List[np.ndarray],
     :param fps: The frame rate of the video.
     :return: The path to the rendered video.
     """
+    from mediapipe.tasks.python.vision import drawing_utils
+    
     # Ensure frames and detection results have the same length
     if len(frames) != len(detection_results):
         raise ValueError("frames and detection_results must have the same length")
@@ -236,6 +246,9 @@ def extract_face_crops(frames: List, target_size=(128, 128)) -> np.ndarray:
     """
         Detects faces using MediaPipe GPU and returns a stacked array of crops.
         """
+    # Lazy-load MediaPipe
+    mp = _get_mp()
+
     # Initialize MediaPipe Task
     base_options = mp.tasks.BaseOptions(
         model_asset_path='src/face_landmarker.task'
