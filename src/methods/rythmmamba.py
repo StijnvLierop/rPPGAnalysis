@@ -11,7 +11,6 @@ from timm.models.layers import trunc_normal_, lecun_normal_
 from timm.models.layers import DropPath, to_2tuple
 import math
 from einops import rearrange
-from mamba_ssm.modules.mamba_simple import Mamba
 
 
 class Fusion_Stem(nn.Module):
@@ -146,6 +145,14 @@ class MambaLayer(nn.Module):
         super().__init__()
         self.dim = dim
         self.norm = nn.LayerNorm(dim)
+
+        # Only load Mamba layer when needed
+        try:
+            from mamba_ssm.modules.mamba_simple import Mamba
+        except ImportError:
+            raise ImportError("Mamba layer requires mamba_ssm package. Please ensure a GPU is available and then"
+                              "install it with 'pip install mamba_ssm'.")
+
         self.mamba = Mamba(
             d_model=dim,
             d_state=d_state,
