@@ -21,7 +21,7 @@ with st.sidebar:
     # If file
     if file:
 
-        # Pick analysis algorithmg
+        # Pick analysis algorithm
         analysis_algorithm = st.selectbox('Select rPPG Extraction Method',
                                           options=['GREEN', 'POS', 'RhythmMamba'])
 
