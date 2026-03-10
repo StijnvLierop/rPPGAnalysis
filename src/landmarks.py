@@ -18,18 +18,6 @@ def _get_mp():
     import mediapipe as mp
     return mp
 
-@lru_cache(maxsize=1)
-def _get_landmarker():
-    mp = _get_mp()
-    base_options = mp.tasks.BaseOptions(model_asset_path='src/face_landmarker.task')
-    options = mp.tasks.vision.FaceLandmarkerOptions(
-        base_options=base_options,
-        output_face_blendshapes=False,
-        output_facial_transformation_matrixes=False,
-        num_faces=1,
-        running_mode=mp.tasks.vision.RunningMode.VIDEO
-    )
-    return mp.tasks.vision.FaceLandmarker.create_from_options(options)
 
 # MediaPipe Face Mesh Landmark Regions
 # These indices are based on the standard 468-point face mesh.
@@ -103,7 +91,15 @@ def extract_landmarks(frames: List[np.ndarray],
     """
     # Lazy-load MediaPipe and reuse a cached landmarker
     mp = _get_mp()
-    landmark_detector = _get_landmarker()
+    base_options = mp.tasks.BaseOptions(model_asset_path='src/face_landmarker.task')
+    options = mp.tasks.vision.FaceLandmarkerOptions(
+        base_options=base_options,
+        output_face_blendshapes=False,
+        output_facial_transformation_matrixes=False,
+        num_faces=1,
+        running_mode=mp.tasks.vision.RunningMode.VIDEO
+    )
+    landmark_detector = mp.tasks.vision.FaceLandmarker.create_from_options(options)
 
     # Get selected landmarks
     selected_landmarks = [v for l, v in LANDMARK_REGIONS.items() if l in selected_landmark_regions]

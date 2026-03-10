@@ -144,7 +144,7 @@ def extract_signal_from_video(video_path: str,
 
     # Generate landmark video
     if analysis_method != 'RhythmMamba':
-        landmarks_video = draw_landmark_video(frames_rgb, predicted_landmarks, selected_landmark_regions)
+        landmarks_video = draw_landmark_video(frames_rgb, predicted_landmarks, selected_landmark_regions, fps=fps)
     else:
         landmarks_video = None
 
