@@ -1,5 +1,6 @@
 from typing import List
 
+from fitparse import FitFile
 import numpy as np
 import pandas as pd
 
@@ -32,21 +33,59 @@ def merge_dataframes(dfs: List[pd.DataFrame], tolerance_ms: int = 500) -> pd.Dat
 
 
 def df_from_movesense_json(df: pd.DataFrame):
+    """
+    Extract heart rate data from Movesense JSON format and convert to DataFrame.
+    """
+    # Extract heart rate data and transform to DataFrame
     heart_rate_data = df['data']
     flattened_data = [{
         'Heart Rate (BPM) Movesense': entry['heartRate']['average'],
         'rrData': entry['heartRate']['rrData'][0],
     } for entry in heart_rate_data]
     df = pd.DataFrame(flattened_data)
+
+    # Calculate time from rrData (time since last RR interval in ms)
     df['Time (s)'] = df['rrData'].cumsum() / 1000
-    return df.drop(columns=['rrData'])
+    df = df.drop(columns=['rrData'])
+
+    return df
 
 
 def df_from_garmin_csv(df: pd.DataFrame):
+    """
+    Extract heart rate data from Garmin CSV format and convert to DataFrame.
+    """
     df = df[df['Message'] == 'record'][['Value 1', 'Value 4']].iloc[1:].reset_index(drop=True)
     df.columns = ['Time (s)', 'Heart Rate (BPM) Garmin']
     starttime = int(df.loc[0, 'Time (s)'])
     df['Time (s)'] = df['Time (s)'].astype(float) - starttime
+    return df
+
+
+def df_from_garmin_fit(file_path: str):
+    """
+    Extract heart rate data from Garmin FIT format and convert to DataFrame.
+    """
+    # Read fit file into dataframe
+    fitfile = FitFile(file_path)
+    data = []
+    for record in fitfile.get_messages('record'):
+        data.append(record.get_values())
+    df = pd.DataFrame(data)
+
+    # Extract relevant timestamp and heart rate columns
+    df = df[['timestamp', 'heart_rate']].rename(columns={'timestamp': 'Timestamp',
+                                                         'heart_rate': 'Heart Rate (BPM) Garmin'})
+    df['Timestamp'] = pd.to_datetime(df['Timestamp'])
+
+    # Create time column from timestamp
+    df['Time (s)'] = df['Timestamp']
+    df['Time (s)'] = df['Time (s)'] - df.loc[0, 'Timestamp']
+    df['Time (s)'] = (df['Time (s)'].astype('int64') // 10**9).astype('float64')
+
+    # Drop the timestamp column
+    df.drop(columns=['Timestamp'], inplace=True)
+
     return df
 
 

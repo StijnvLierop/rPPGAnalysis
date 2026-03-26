@@ -1,7 +1,8 @@
 import pandas as pd
 import streamlit as st
 
-from src.parsing import df_from_movesense_json, df_from_garmin_csv, merge_dataframes, calculate_mae_robust
+from src.parsing import df_from_movesense_json, merge_dataframes, calculate_mae_robust, \
+    df_from_garmin_fit
 
 # Page title
 st.title("Evaluate rPPG Signal")
@@ -9,7 +10,7 @@ st.title("Evaluate rPPG Signal")
 st.sidebar.title("Upload Data")
 with st.sidebar:
     # Upload reference data files
-    garmin_file = st.file_uploader("Upload Garmin Reference Data", type=["csv"])
+    garmin_file = st.file_uploader("Upload Garmin Reference Data", type=["fit"])
     movesense_file = st.file_uploader("Upload Movesense Reference Data", type=["json"])
 
     # Upload predicted data file
@@ -17,7 +18,7 @@ with st.sidebar:
 
 # If Garmin file
 if garmin_file:
-    garmin_df = df_from_garmin_csv(pd.read_csv(garmin_file))
+    garmin_df = df_from_garmin_fit(garmin_file)
 else:
     garmin_df = None
 
@@ -37,7 +38,7 @@ else:
 # Merge files
 if garmin_df is not None or predicted_df is not None or movesense_df is not None:
     # Merge dataframes
-    df = merge_dataframes([df for df in [garmin_df, movesense_df, predicted_df] if df is not None])
+    df = merge_dataframes([df for df in [movesense_df, garmin_df, predicted_df] if df is not None])
     if 'Heart Rate (BPM) Garmin' in df.columns and 'Heart Rate (BPM) Movesense' in df.columns:
         df['Heart Rate (BPM) Avg'] = df[['Heart Rate (BPM) Garmin', 'Heart Rate (BPM) Movesense']].mean(axis=1)
 
