@@ -46,6 +46,8 @@ if garmin_df is not None or predicted_df is not None or movesense_df is not None
     st.line_chart(df, x='Time (s)')
 
     # Calculate MAE
+    if 'Heart Rate (BPM) Movesense' in df.columns and 'Heart Rate (BPM) Garmin' in df.columns:
+        st.write("MAE Movesense-Garmin:", calculate_mae_robust(df['Heart Rate (BPM) Movesense'], df['Heart Rate (BPM) Garmin']))
     if 'Heart Rate (BPM) Avg' in df.columns and 'Heart Rate (BPM) Predicted' in df.columns:
         st.write("MAE Avg-Predicted:", calculate_mae_robust(df['Heart Rate (BPM) Avg'], df['Heart Rate (BPM) Predicted']))
     if 'Heart Rate (BPM) Garmin' in df.columns and 'Heart Rate (BPM) Predicted' in df.columns:

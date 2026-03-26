@@ -29,6 +29,11 @@ def merge_dataframes(dfs: List[pd.DataFrame], tolerance_ms: int = 500) -> pd.Dat
             suffixes=('', '_extra')
         )
 
+    # Make sure the 'Time (s)' column is the first column
+    columns = base_df.columns.tolist()
+    columns.remove('Time (s)')
+    base_df = base_df[['Time (s)'] + columns]
+
     return base_df
 
 
