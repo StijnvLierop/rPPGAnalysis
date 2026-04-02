@@ -94,11 +94,5 @@ def df_from_garmin_fit(file_path: str):
     return df
 
 
-def calculate_mae_robust(y_true, y_pred):
-    # Convert to numpy and find where both have valid data
-    mask = ~np.isnan(y_true) & ~np.isnan(y_pred)
-
-    if not np.any(mask):
-        return None  # No overlapping valid data
-
-    return np.mean(np.abs(y_true[mask] - y_pred[mask]))
+def remove_start_buffer(df: pd.DataFrame, seconds: int):
+    return df.loc[df['Time (s)'] >= seconds]
