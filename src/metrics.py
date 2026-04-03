@@ -25,7 +25,7 @@ def calculate_SNR(pred_ppg_signal: np.ndarray,
                   label_hr_signal: np.ndarray,
                   fs: int = 100,
                   low_pass: float = 0.75,
-                  high_pass: float = 2.5):
+                  high_pass: float = 4.0):
     pred_ppg_signal = np.array(pred_ppg_signal).flatten()
     label_hr_signal = np.array(label_hr_signal).flatten()
 
@@ -37,8 +37,8 @@ def calculate_SNR(pred_ppg_signal: np.ndarray,
 
     # PSD Calculation
     # Increase N to improve frequency resolution (helps if signal is short)
-    nfft = max(int(2 ** np.ceil(np.log2(len(pred_ppg_signal)))), 1024)
-    f, pxx = signal.periodogram(pred_ppg_signal, fs=fs, nfft=nfft, detrend='linear')
+    sig = signal.detrend(pred_ppg_signal, type='linear')
+    f, pxx = signal.welch(sig, fs=fs, nperseg=min(len(sig), 512), nfft=2048)
 
     # Masks
     h1_mask = (f >= (f0 - deviation)) & (f <= (f0 + deviation))
