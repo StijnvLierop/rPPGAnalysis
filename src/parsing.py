@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from fitparse import FitFile
 import numpy as np
@@ -13,11 +13,14 @@ def merge_dataframes(dfs: List[pd.DataFrame], tolerance_ms: int = 500) -> pd.Dat
     if not dfs:
         return pd.DataFrame()
 
+    # Filter out NaNs from the merge key for every dataframe in the list
+    cleaned_dfs = [df.dropna(subset=['Time (s)']) for df in dfs]
+
     # Start with the first dataframe and sort timestamps
-    base_df = dfs[0].sort_values('Time (s)')
+    base_df = cleaned_dfs[0].sort_values('Time (s)')
 
     # Iteratively merge the rest
-    for next_df in dfs[1:]:
+    for next_df in cleaned_dfs[1:]:
         next_df = next_df.sort_values('Time (s)')
 
         base_df = pd.merge_asof(
@@ -67,7 +70,7 @@ def df_from_garmin_csv(df: pd.DataFrame):
     return df
 
 
-def df_from_garmin_fit(file_path: str):
+def df_from_garmin_fit(file_path):
     """
     Extract heart rate data from Garmin FIT format and convert to DataFrame.
     """
@@ -76,7 +79,15 @@ def df_from_garmin_fit(file_path: str):
     data = []
     for record in fitfile.get_messages('record'):
         data.append(record.get_values())
+    
+    if not data:
+        return pd.DataFrame(columns=['Heart Rate (BPM) Garmin', 'Time (s)'])
+        
     df = pd.DataFrame(data)
+
+    # Check if required columns exist
+    if 'timestamp' not in df.columns or 'heart_rate' not in df.columns:
+        return pd.DataFrame(columns=['Heart Rate (BPM) Garmin', 'Time (s)'])
 
     # Extract relevant timestamp and heart rate columns
     df = df[['timestamp', 'heart_rate']].rename(columns={'timestamp': 'Timestamp',
@@ -86,7 +97,7 @@ def df_from_garmin_fit(file_path: str):
     # Create time column from timestamp
     df['Time (s)'] = df['Timestamp']
     df['Time (s)'] = df['Time (s)'] - df.loc[0, 'Timestamp']
-    df['Time (s)'] = (df['Time (s)'].astype('int64') // 10**9).astype('float64')
+    df['Time (s)'] = (df['Time (s)'].dt.total_seconds()).astype('float64')
 
     # Drop the timestamp column
     df.drop(columns=['Timestamp'], inplace=True)
@@ -94,5 +105,9 @@ def df_from_garmin_fit(file_path: str):
     return df
 
 
-def remove_start_buffer(df: pd.DataFrame, seconds: int):
-    return df.loc[df['Time (s)'] >= seconds]
+def remove_start_buffer(df: pd.DataFrame, start_seconds: Optional[int], end_seconds: Optional[int]):
+    if start_seconds:
+        df = df.loc[(df['Time (s)'] >= start_seconds)]
+    if end_seconds:
+        df = df.loc[(df['Time (s)'] <= end_seconds)]
+    return df

@@ -38,7 +38,11 @@ def calculate_SNR(pred_ppg_signal: np.ndarray,
     # PSD Calculation
     # Increase N to improve frequency resolution (helps if signal is short)
     sig = signal.detrend(pred_ppg_signal, type='linear')
-    f, pxx = signal.welch(sig, fs=fs, nperseg=min(len(sig), 512), nfft=2048)
+    nperseg = min(len(sig), 512)
+    # Ensure nperseg is not 0
+    if nperseg == 0:
+        return -20.0
+    f, pxx = signal.welch(sig, fs=fs, nperseg=nperseg, nfft=2048)
 
     # Masks
     h1_mask = (f >= (f0 - deviation)) & (f <= (f0 + deviation))

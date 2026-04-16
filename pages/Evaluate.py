@@ -19,14 +19,20 @@ with st.sidebar:
     predicted_bvp_file = st.file_uploader("Upload Predicted BVP Data", type=["csv"])
 
     # Start buffer size
-    buffer_seconds = st.sidebar.slider("Buffer (s)", 0, 10, 5)
+    if predicted_bpm_file:
+        predicted_bpm_df = pd.read_csv(predicted_bpm_file)
+        start_time = st.sidebar.slider("Start time (s)", 0, int(predicted_bpm_df['Time (s)'].max()), 0)
+        end_time = st.sidebar.slider("End time (s)", 0, int(predicted_bpm_df['Time (s)'].max()),
+                                     int(predicted_bpm_df['Time (s)'].max()))
+    else:
+        start_time = 0
+        end_time = None
 
 # --- Data Loading ---
 garmin_df = df_from_garmin_fit(garmin_file) if garmin_file else None
 movesense_df = df_from_movesense_json(pd.read_json(movesense_file)) if movesense_file else None
 
 if predicted_bpm_file:
-    predicted_bpm_df = pd.read_csv(predicted_bpm_file)
     if 'Heart Rate (BPM)' not in predicted_bpm_df.columns:
         st.error("Uploaded file does not contain 'Heart Rate (BPM)' column.")
     predicted_bpm_df.rename(columns={'Heart Rate (BPM)': 'Heart Rate (BPM) Predicted'}, inplace=True)
@@ -51,7 +57,7 @@ if len(dataframes_to_merge) > 0:
         df['Heart Rate (BPM) Avg'] = df[['Heart Rate (BPM) Garmin', 'Heart Rate (BPM) Movesense']].mean(axis=1)
 
     # Remove start buffer
-    df = remove_start_buffer(df, seconds=buffer_seconds)
+    df = remove_start_buffer(df, start_seconds=start_time, end_seconds=end_time)
 
     # Plot
     st.subheader("Heart Rate Comparison")
@@ -93,9 +99,15 @@ if len(dataframes_to_merge) > 0:
 
             if reference_col:
                 snr_data = df[['BVP', reference_col]].dropna()
-                snr_val = calculate_SNR(snr_data['BVP'], snr_data[reference_col], fs=100)
-                st.metric("SNR", f"{snr_val:.2f} dB")
-                st.write(f"Ground Truth: {reference_col}")
+                if not snr_data.empty:
+                    # Often rPPG signals are at 30 fps, but BVP in this app is usually upsampled or 
+                    # corresponds to video fps. We should ideally know the fs.
+                    # Defaulting to 30 as it's common for video.
+                    snr_val = calculate_SNR(snr_data['BVP'], snr_data[reference_col], fs=30)
+                    st.metric("SNR", f"{snr_val:.2f} dB")
+                    st.write(f"Ground Truth: {reference_col}")
+                else:
+                    st.warning("No overlapping data for SNR calculation.")
             else:
                 st.warning("Upload Reference Data to calculate SNR.")
         else:
