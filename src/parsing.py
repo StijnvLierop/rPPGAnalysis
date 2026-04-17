@@ -46,16 +46,24 @@ def df_from_movesense_json(df: pd.DataFrame):
     """
     # Extract heart rate data and transform to DataFrame
     heart_rate_data = df['data']
-    flattened_data = [{
-        'Heart Rate (BPM) Movesense': entry['heartRate']['average'],
-        'rrData': entry['heartRate']['rrData'][0],
-    } for entry in heart_rate_data]
+    flattened_data = []
+    current_time_ms = 0
+
+    for entry in heart_rate_data:
+        # Use the average HR provided by the sensor
+        hr_val = entry['heartRate']['average']
+
+        # Calculate how much time this packet actually covers by summing all RR intervals
+        packet_duration_ms = sum(entry['heartRate']['rrData'])
+
+        # Update the timeline
+        current_time_ms += packet_duration_ms
+
+        flattened_data.append({
+            'Heart Rate (BPM) Movesense': hr_val,
+            'Time (s)': current_time_ms / 1000.0
+        })
     df = pd.DataFrame(flattened_data)
-
-    # Calculate time from rrData (time since last RR interval in ms)
-    df['Time (s)'] = df['rrData'].cumsum() / 1000
-    df = df.drop(columns=['rrData'])
-
     return df
 
 
@@ -105,7 +113,7 @@ def df_from_garmin_fit(file_path):
     return df
 
 
-def remove_start_buffer(df: pd.DataFrame, start_seconds: Optional[int], end_seconds: Optional[int]):
+def clip_df_on_time(df: pd.DataFrame, start_seconds: Optional[int], end_seconds: Optional[int]):
     if start_seconds:
         df = df.loc[(df['Time (s)'] >= start_seconds)]
     if end_seconds:

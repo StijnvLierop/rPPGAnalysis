@@ -5,7 +5,7 @@ import pandas as pd
 
 from src.extract import extract_signal_from_video, read_video_rgb
 from src.metrics import calculate_mae_robust, calculate_SNR
-from src.parsing import df_from_movesense_json, df_from_garmin_fit, remove_start_buffer, merge_dataframes
+from src.parsing import df_from_movesense_json, df_from_garmin_fit, clip_df_on_time, merge_dataframes
 
 
 def process_dir(input_dir: str, output_file: str, algorithm: str, smooth_signal: bool, start_buffer: int, measurement_window: int):
@@ -20,7 +20,7 @@ def process_dir(input_dir: str, output_file: str, algorithm: str, smooth_signal:
 
         # Read start times file
         start_time_df = pd.read_csv(os.path.join(participant_dir, 'start_times.csv'))
-        start_time_df['end_time'] = start_time_df['start_time'] + measurement_window
+        start_time_df['end_time'] = start_time_df['start_time'] + start_buffer + measurement_window
 
         # Read participant reference files
         participant_reference_data = {}
@@ -102,13 +102,17 @@ def process_dir(input_dir: str, output_file: str, algorithm: str, smooth_signal:
                     end_time = None
                     print(f'Start time not found for video: {video}')
 
+                # Prepare Reference Data (Shift sensor 0 to match Video 'start_time' which represents the time at which the recording started in the video)
+                ref_df = participant_reference_data[condition].copy()
+                ref_df['Time (s)'] += start_time
+
                 # Merge dataframes once per video
-                df_merged = merge_dataframes([video_bpm_result_df, video_bvp_result_df, participant_reference_data[condition]])
+                df_merged = merge_dataframes([video_bpm_result_df, video_bvp_result_df, ref_df])
 
                 # Remove start buffer
-                df_merged = remove_start_buffer(df_merged, start_seconds=start_time + start_buffer, end_seconds=end_time)
+                df_merged = clip_df_on_time(df_merged, start_seconds=start_time + start_buffer, end_seconds=end_time)
 
-                for key in participant_reference_data[condition].columns:
+                for key in ref_df.columns:
 
                     # Skip this step for the time column
                     if key == 'Time (s)':

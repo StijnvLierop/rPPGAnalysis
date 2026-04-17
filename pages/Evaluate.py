@@ -2,7 +2,7 @@ import pandas as pd
 import streamlit as st
 
 from src.parsing import df_from_movesense_json, merge_dataframes, \
-    df_from_garmin_fit, remove_start_buffer
+    df_from_garmin_fit, clip_df_on_time
 from src.metrics import calculate_mae_robust, calculate_SNR
 
 # Page title
@@ -21,12 +21,13 @@ with st.sidebar:
     # Start buffer size
     if predicted_bpm_file:
         predicted_bpm_df = pd.read_csv(predicted_bpm_file)
-        start_time = st.sidebar.slider("Start time (s)", 0, int(predicted_bpm_df['Time (s)'].max()), 0)
-        end_time = st.sidebar.slider("End time (s)", 0, int(predicted_bpm_df['Time (s)'].max()),
+        start_time = st.sidebar.slider("Start time reference recording in video (s)", 0, int(predicted_bpm_df['Time (s)'].max()), 0)
+        end_time = st.sidebar.slider("End time reference recording in video (s)", 0, int(predicted_bpm_df['Time (s)'].max()),
                                      int(predicted_bpm_df['Time (s)'].max()))
     else:
         start_time = 0
         end_time = None
+    start_buffer = st.sidebar.slider("Start buffer to discard after start reference measurement (s)", 0, 10, 0)
 
 # --- Data Loading ---
 garmin_df = df_from_garmin_fit(garmin_file) if garmin_file else None
@@ -46,8 +47,15 @@ if predicted_bvp_file:
 else:
     predicted_bvp_df = None
 
+# Apply Time Shift to Ground Truth
+# This aligns 'Sensor 0s' with the 'start_time' index of the video (the time at which the actual recording started)
+if movesense_df is not None:
+    movesense_df['Time (s)'] += start_time
+if garmin_df is not None:
+    garmin_df['Time (s)'] += start_time
+
 # --- Merging & Processing ---
-dataframes_to_merge = [df for df in [movesense_df, garmin_df, predicted_bpm_df, predicted_bvp_df] if df is not None]
+dataframes_to_merge = [df for df in [predicted_bpm_df, predicted_bvp_df,movesense_df, garmin_df] if df is not None]
 
 if len(dataframes_to_merge) > 0:
     # Merge dataframes
@@ -57,7 +65,7 @@ if len(dataframes_to_merge) > 0:
         df['Heart Rate (BPM) Avg'] = df[['Heart Rate (BPM) Garmin', 'Heart Rate (BPM) Movesense']].mean(axis=1)
 
     # Remove start buffer
-    df = remove_start_buffer(df, start_seconds=start_time, end_seconds=end_time)
+    df = clip_df_on_time(df, start_seconds=start_time + start_buffer, end_seconds=end_time)
 
     # Plot
     st.subheader("Heart Rate Comparison")
