@@ -10,7 +10,7 @@ from src.parsing import df_from_movesense_json, df_from_garmin_fit, clip_df_on_t
 
 def process_dir(input_dir: str, output_file: str, algorithm: str, smooth_signal: bool, start_buffer: int, measurement_window: int):
     # Store results
-    result_df = pd.DataFrame(columns=['Participant', 'Condition', 'Camera', 'Compression', 'mae_movesense', 'snr_movesense', 'mae_garmin', 'snr_garmin', 'mae_movesense_garmin', 'mae_average', 'snr_average'])
+    result_df = pd.DataFrame(columns=['Participant', 'Condition', 'Camera', 'Compression', 'mae_movesense', 'snr_movesense', 'mae_garmin', 'snr_garmin', 'mae_movesense_garmin'])
 
     # Loop over participants
     for participant in tqdm(os.listdir(input_dir)):
