@@ -1,43 +1,44 @@
 from typing import List, Optional
 
 from fitparse import FitFile
-import numpy as np
 import pandas as pd
 
 
-def merge_dataframes(dfs: List[pd.DataFrame], tolerance_ms: int = 500) -> pd.DataFrame:
+def merge_dataframes(dfs: List[pd.DataFrame], target_freq: str = '33ms') -> pd.DataFrame:
     """
-    Merges multiple dataframes using 'asof' join for non-exact timestamps.
-    Assumes the first DF is the 'anchor' (base) timeline.
+    Merges dataframes based on timestamp and interpolates missing values.
     """
-    if not dfs:
-        return pd.DataFrame()
+    processed_dfs = []
 
-    # Filter out NaNs from the merge key for every dataframe in the list
-    cleaned_dfs = [df.dropna(subset=['Time (s)']) for df in dfs]
+    for i, df in enumerate(dfs):
+        # Prepare copy and convert float seconds to Timedelta
+        temp_df = df.copy()
+        temp_df['Time (s)'] = pd.to_timedelta(temp_df['Time (s)'], unit='s')
 
-    # Start with the first dataframe and sort timestamps
-    base_df = cleaned_dfs[0].sort_values('Time (s)')
+        # Set index (Required for resample/interpolate)
+        temp_df = temp_df.set_index('Time (s)')
 
-    # Iteratively merge the rest
-    for next_df in cleaned_dfs[1:]:
-        next_df = next_df.sort_values('Time (s)')
+        # Average any duplicate timestamps (common in rPPG)
+        temp_df = temp_df.groupby(level=0).mean()
+        processed_dfs.append(temp_df)
 
-        base_df = pd.merge_asof(
-            base_df,
-            next_df,
-            on='Time (s)',
-            direction='nearest',  # Finds the closest timestamp in either direction
-            tolerance=tolerance_ms / 1000.0,  # e.g., don't match if > 0.5s apart
-            suffixes=('', '_extra')
-        )
+    # Outer Join: Keep every single timestamp from every source
+    combined = pd.concat(processed_dfs, axis=1).sort_index()
 
-    # Make sure the 'Time (s)' column is the first column
-    columns = base_df.columns.tolist()
-    columns.remove('Time (s)')
-    base_df = base_df[['Time (s)'] + columns]
+    # Linear Interpolation: Fill gaps between sensors
+    combined = combined.interpolate(method='linear')
 
-    return base_df
+    # Resample to a uniform grid (e.g., 33ms)
+    result = combined.resample(target_freq).mean()
+
+    # Fill any remaining NaNs at the very start/end created by resampling
+    result = result.interpolate(method='linear').dropna()
+
+    # Convert index back to float seconds for readability
+    result.index = result.index.total_seconds()
+    result.index.name = 'Time (s)'
+
+    return result.reset_index()
 
 
 def df_from_movesense_json(df: pd.DataFrame):

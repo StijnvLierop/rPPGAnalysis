@@ -29,7 +29,6 @@ def process_dir(input_dir: str, output_file: str, algorithm: str, smooth_signal:
             garmin_file = os.path.join(participant_dir, f'{participant}_{condition}.fit')
             movesense_file = os.path.join(participant_dir, f'{participant}_{condition}.json')
             df = merge_dataframes([df_from_garmin_fit(garmin_file), df_from_movesense_json(pd.read_json(movesense_file))])
-            df['Heart Rate (BPM) average'] = df[['Heart Rate (BPM) Garmin', 'Heart Rate (BPM) Movesense']].mean(axis=1)
             participant_reference_data[condition] = df
             mae_movesense_garmin[condition] = calculate_mae_robust(df['Heart Rate (BPM) Garmin'], df['Heart Rate (BPM) Movesense'])
 

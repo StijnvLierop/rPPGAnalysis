@@ -61,9 +61,6 @@ if len(dataframes_to_merge) > 0:
     # Merge dataframes
     df = merge_dataframes(dataframes_to_merge)
 
-    if 'Heart Rate (BPM) Garmin' in df.columns and 'Heart Rate (BPM) Movesense' in df.columns:
-        df['Heart Rate (BPM) Avg'] = df[['Heart Rate (BPM) Garmin', 'Heart Rate (BPM) Movesense']].mean(axis=1)
-
     # Remove start buffer
     df = clip_df_on_time(df, start_seconds=start_time + start_buffer, end_seconds=end_time)
 
@@ -84,9 +81,6 @@ if len(dataframes_to_merge) > 0:
                 f"Movesense vs Garmin:", round(calculate_mae_robust(df['Heart Rate (BPM) Movesense'], df['Heart Rate (BPM) Garmin']), 2))
 
         if 'Heart Rate (BPM) Predicted' in df.columns:
-            if 'Heart Rate (BPM) Avg' in df.columns:
-                st.metric(
-                    f"Avg vs Predicted:", round(calculate_mae_robust(df['Heart Rate (BPM) Avg'], df['Heart Rate (BPM) Predicted']), 2))
             if 'Heart Rate (BPM) Garmin' in df.columns:
                 st.metric(
                     f"Garmin vs Predicted:", round(calculate_mae_robust(df['Heart Rate (BPM) Garmin'], df['Heart Rate (BPM) Predicted']), 2))
@@ -99,18 +93,11 @@ if len(dataframes_to_merge) > 0:
         # Calculate SNR only if BVP and a ground truth BPM exist
         if 'BVP' in df.columns:
             # Use Movesense as ground truth for SNR if available, otherwise Garmin
-            reference_col = None
-            if 'Heart Rate (BPM) Movesense' in df.columns:
-                reference_col = 'Heart Rate (BPM) Movesense'
-            elif 'Heart Rate (BPM) Garmin' in df.columns:
-                reference_col = 'Heart Rate (BPM) Garmin'
+            reference_col = 'Heart Rate (BPM) Movesense'
 
             if reference_col:
                 snr_data = df[['BVP', reference_col]].dropna()
                 if not snr_data.empty:
-                    # Often rPPG signals are at 30 fps, but BVP in this app is usually upsampled or 
-                    # corresponds to video fps. We should ideally know the fs.
-                    # Defaulting to 30 as it's common for video.
                     snr_val = calculate_SNR(snr_data['BVP'], snr_data[reference_col], fs=30)
                     st.metric("SNR", f"{snr_val:.2f} dB")
                     st.write(f"Ground Truth: {reference_col}")
