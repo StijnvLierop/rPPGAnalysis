@@ -97,7 +97,7 @@ def extract_landmarks(frames: List[np.ndarray],
         output_face_blendshapes=False,
         output_facial_transformation_matrixes=False,
         num_faces=1,
-        running_mode=mp.tasks.vision.RunningMode.VIDEO
+        running_mode=mp.tasks.vision.RunningMode.VIDEO,
     )
     landmark_detector = mp.tasks.vision.FaceLandmarker.create_from_options(options)
 
@@ -153,6 +153,9 @@ def extract_landmarks(frames: List[np.ndarray],
 
             # Add mean RGB value of landmark locations to landmarks list
             landmarks_list.append(np.mean(pixel_colors, axis=0))
+
+        else:
+            print("Warning: No face detected in frame.")
 
         # Add predicted landmark locations result
         landmark_detector_results.append(landmark_detector_result)

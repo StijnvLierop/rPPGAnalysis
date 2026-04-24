@@ -19,13 +19,15 @@ def process_dir(input_dir: str, output_file: str, algorithm: str, smooth_signal:
         participant_dir = os.path.join(input_dir, participant)
 
         # Read start times file
-        start_time_df = pd.read_csv(os.path.join(participant_dir, 'start_times.csv'))
+        start_time_df = pd.read_csv(os.path.join(participant_dir, 'start_times.csv'), sep=';')
+        start_time_df['start_time'] = start_time_df['start_time'] / 100
         start_time_df['end_time'] = start_time_df['start_time'] + start_buffer + measurement_window
 
         # Read participant reference files
         participant_reference_data = {}
         mae_movesense_garmin = {}
-        for condition in ['s1', 's2', 's3', 's4', 's5']:
+        # for condition in ['s1', 's2', 's3', 's4', 's5']:
+        for condition in ['s1']:
             garmin_file = os.path.join(participant_dir, f'{participant}_{condition}.fit')
             movesense_file = os.path.join(participant_dir, f'{participant}_{condition}.json')
             df = merge_dataframes([df_from_garmin_fit(garmin_file), df_from_movesense_json(pd.read_json(movesense_file))])
@@ -111,6 +113,10 @@ def process_dir(input_dir: str, output_file: str, algorithm: str, smooth_signal:
                 # Remove start buffer
                 df_merged = clip_df_on_time(df_merged, start_seconds=start_time + start_buffer, end_seconds=end_time)
 
+                if len(df_merged) == 0:
+                    print("No union between reference and predicted data found. Skipping video...")
+                    continue
+
                 for key in ref_df.columns:
 
                     # Skip this step for the time column
@@ -141,6 +147,6 @@ if __name__ == '__main__':
     parser.add_argument('--algorithm', '-a', type=str, default='POS', help='Analysis algorithm to use.')
     parser.add_argument('--smooth_signal', '-s', type=bool, default=True, help='Smooth signal.')
     parser.add_argument('--start_buffer', '-b', type=int, default=5, help='Start buffer (s).')
-    parser.add_argument('--measurement_window', '-m', type=int, default=35, help='Measurement window (s).')
+    parser.add_argument('--measurement_window', '-m', type=int, default=30, help='Measurement window (s).')
 
     process_dir(**vars(parser.parse_args()))
