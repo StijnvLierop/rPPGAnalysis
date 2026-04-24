@@ -26,8 +26,7 @@ def process_dir(input_dir: str, output_file: str, algorithm: str, smooth_signal:
         # Read participant reference files
         participant_reference_data = {}
         mae_movesense_garmin = {}
-        # for condition in ['s1', 's2', 's3', 's4', 's5']:
-        for condition in ['s1']:
+        for condition in ['s1', 's2', 's3', 's4', 's5']:
             garmin_file = os.path.join(participant_dir, f'{participant}_{condition}.fit')
             movesense_file = os.path.join(participant_dir, f'{participant}_{condition}.json')
             df = merge_dataframes([df_from_garmin_fit(garmin_file), df_from_movesense_json(pd.read_json(movesense_file))])
